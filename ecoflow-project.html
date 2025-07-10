@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoFLOW Project - Brylle Andrei T. Torres</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .project-detail {
+            padding-top: 100px;
+            padding-bottom: 50px;
+        }
+        
+        .project-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .project-header img {
+            max-width: 300px;
+            margin-bottom: 20px;
+        }
+        
+        .project-header h1 {
+            font-size: 2.8rem;
+            color: var(--dark-color);
+            margin-bottom: 10px;
+        }
+        
+        .project-header p {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .project-videos {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .video-container {
+            margin-bottom: 40px;
+        }
+        
+        .video-container h2 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+        
+        .video-wrapper {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
+            overflow: hidden;
+            border-radius: 10px;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .video-wrapper video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .project-description {
+            max-width: 1000px;
+            margin: 50px auto;
+        }
+        
+        .project-description h2 {
+            font-size: 2rem;
+            color: var(--dark-color);
+            margin-bottom: 20px;
+        }
+        
+        .project-description p {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+        
+        .back-button {
+            text-align: center;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <div class="logo">Brylle Torres</div>
+                <ul class="nav-links">
+                    <li><a href="index.html#home">Home</a></li>
+                    <li><a href="index.html#about">About</a></li>
+                    <li><a href="index.html#skills">Skills</a></li>
+                    <li><a href="index.html#projects">Projects</a></li>
+                    <li><a href="index.html#education">Education</a></li>
+                    <li><a href="index.html#certifications">Certifications</a></li>
+                    <li><a href="index.html#contact">Contact</a></li>
+                </ul>
+                <div class="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <section class="project-detail">
+        <div class="container">
+            <div class="project-header">
+                <img src="images/ecoflow.png" alt="EcoFLOW Logo">
+                <h1>EcoFLOW Project</h1>
+                <p>A smart irrigation system for sugarcane fields that monitors soil conditions and provides irrigation recommendations</p>
+            </div>
+            
+            <div class="project-videos">
+                <div class="video-container">
+                    <h2>EcoFLOW Advertisement</h2>
+                    <div class="video-wrapper">
+                        <video controls>
+                            <source src="videos/ecoflow ad.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                
+                <div class="video-container">
+                    <h2>EcoFLOW Demo</h2>
+                    <div class="video-wrapper">
+                        <video controls>
+                            <source src="videos/ecoflow demo.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="project-description">
+                <h2>About the Project</h2>
+                <p>EcoFLOW is an innovative IoT-based smart irrigation system designed specifically for sugarcane fields. The system utilizes advanced sensors to monitor critical soil parameters including temperature, humidity, conductivity, salinity, and pH levels in real-time.</p>
+                
+                <p>By collecting and analyzing this data locally, EcoFLOW provides farmers with precise irrigation recommendations, helping to optimize water usage while maximizing crop yield. The system also measures water flow rate during irrigation, ensuring efficient water distribution across the field.</p>
+                
+                <h2>Key Features</h2>
+                <ul>
+                    <li>Real-time monitoring of soil parameters (temperature, humidity, conductivity, salinity, pH)</li>
+                    <li>Water flow rate measurement during irrigation</li>
+                    <li>Data-driven irrigation recommendations</li>
+                    <li>Local interface for monitoring and control</li>
+                    <li>Energy-efficient design for long-term field deployment</li>
+                </ul>
+                
+                <h2>Technology Stack</h2>
+                <p>EcoFLOW is built using ESP32 microcontrollers and various environmental sensors for data collection and processing. The system includes hardware components for field deployment and local software solutions for data visualization and analysis, without requiring cloud connectivity.</p>
+            </div>
+            
+            <div class="back-button">
+                <a href="index.html#projects" class="btn primary-btn">Back to Projects</a>
+                <a href="ESP32_ECOFLOW/" class="btn secondary-btn">View Source Code</a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2023 Brylle Andrei T. Torres. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html> 

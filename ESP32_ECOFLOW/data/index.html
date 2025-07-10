@@ -1,0 +1,398 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>EcoFLOW Dashboard</title>
+        <link rel="icon" href="/webT.png" type="image/png">
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f0f0f0;
+                margin: 0;
+                padding: 0;
+            }
+            .container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 20px;
+            }
+            .header {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                background-color: #fff;
+                padding: 10px 20px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .header img {
+                height: 50px;
+            }
+            .header nav a {
+                margin: 0 15px;
+                text-decoration: none;
+                color: #333;
+            }
+            .main {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                width: 100%;
+                margin-top: 20px;
+            }
+            .card {
+                background-color: #fff;
+                padding: 10px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                width: 160px;
+                margin: 10px;
+                text-align: center;
+            }
+            .chart-container {
+                position: relative;
+                width: 120px;
+                height: 120px;
+                margin: auto;
+            }
+            .full-row {
+                text-align: center;
+                width: 93%;
+                margin-top: 20px;
+                padding: 20px;
+                background-color: white;
+                color: black;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                font-size: 24px;
+            }
+
+            .switch {
+                margin-left: auto;
+                display: flex;
+                align-items: center;
+                margin-right: 48px;
+            }
+
+            .switch-container {
+                position: relative;
+                display: inline-block;
+                width: 50px;
+                height: 25px;
+            }
+
+            .switch-container input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: #ccc;
+                transition: 0.4s;
+                border-radius: 25px;
+            }
+
+            .slider:before {
+                position: absolute;
+                content: "";
+                height: 19px;
+                width: 19px;
+                left: 3px;
+                bottom: 3px;
+                background-color: white;
+                transition: 0.4s;
+                border-radius: 50%;
+            }
+
+            input:checked + .slider {
+                background-color: #4CAF50;
+            }
+
+            input:checked + .slider:before {
+                transform: translateX(25px);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <a href="index.php">
+                <img src="/ecoflow.png" alt="EcoFLOW Logo">
+            </a>
+            <nav>
+                <a href="/">HOME</a>
+                <a href="/soil_history">SOIL HISTORY</a>
+                <a href="/water_history">WATER HISTORY</a>
+            </nav>
+            <div class="switch">
+                <label class="switch-container">
+                    <input type="checkbox" id="toggleSwitch">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="main">
+                <div class="card">
+                    <h3>Humidity</h3>
+                    <div class="chart-container">
+                        <canvas id="humidityChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Temperature</h3>
+                    <div class="chart-container">
+                        <canvas id="temperatureChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Conductivity</h3>
+                    <div class="chart-container">
+                        <canvas id="salinityChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>pH Level</h3>
+                    <div class="chart-container">
+                        <canvas id="pHChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Moisture</h3>
+                    <div class="chart-container">
+                        <canvas id="moistureChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Water Flow</h3>
+                    <div class="chart-container">
+                        <canvas id="flowChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="full-row" id="irrigationRecommendation">
+                Loading Recommendation...
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+
+            let isStabilized = false; // Flag to track stabilization
+            const stabilizationTime = 60000; // 15 seconds
+            let updateIrrigation = false; 
+
+            update = 0;
+            // Custom Plugin to Add Center Text with Units in Doughnut Charts
+            const centerTextPlugin = {
+                id: 'centerText',
+                beforeDraw(chart) {
+                    const { width, height } = chart;
+                    const ctx = chart.ctx;
+                    const value = chart.data.datasets[0].data[0];
+                    const unit = chart.data.unit || ''; // Get the unit from chart data
+                    ctx.save();
+                    ctx.font = 'bold 18px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#000';
+                    ctx.fillText(`${value}${unit}`, width / 2, height / 2);
+                    ctx.restore();
+                }
+            };
+        
+            // Initialize Doughnut Charts
+            const createDoughnutChart = (ctx, label, unit = '', limit) => new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [label, 'Remaining'],
+                    datasets: [{
+                        data: [0, limit],
+                        backgroundColor: ['#4CAF50', '#DDDDDD']
+                    }],
+                    unit: unit, // Add unit for display
+                    limit: limit
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
+                },
+                plugins: [centerTextPlugin]
+            });
+
+            // Function to fetch the stored recommendation from ESP32
+            async function fetchStoredRecommendation() {
+                try {
+                    const response = await fetch(`http://${window.location.host}/getRecommendation`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    const data = await response.text();
+                    return data.trim(); // Trim to remove extra spaces or newlines
+                } catch (error) {
+                    console.error("Error fetching stored recommendation:", error);
+                    return ""; // Default to empty if there's an error
+                }
+            }
+
+            // Function to handle stabilization logic
+            async function handleStabilization() {
+                const storedRecommendation = await fetchStoredRecommendation();
+
+                if (storedRecommendation) {
+                    console.log("ESP32 has a stored recommendation. Displaying it.");
+                    document.getElementById('irrigationRecommendation').textContent =
+                        "Irrigation Recommendation: " + storedRecommendation;
+                    isStabilized = true; // Skip waiting
+                } else {
+                    console.log("No stored recommendation. Stabilizing readings for 15 seconds.");
+                    document.getElementById('irrigationRecommendation').textContent = "Stabilizing Readings...";
+
+                    // Wait 15 seconds before allowing recommendation updates
+                    setTimeout(() => {
+                        isStabilized = true;
+                        console.log("Readings stabilized. Now updating irrigation recommendation.");
+                        updateIrrigation = true;
+                    }, stabilizationTime);
+                }
+            }
+
+
+
+                    
+            const humidityChart = createDoughnutChart(document.getElementById('humidityChart').getContext('2d'), 'Humidity', '%RH', 100);
+            const temperatureChart = createDoughnutChart(document.getElementById('temperatureChart').getContext('2d'), 'Temperature', '°C', 100);
+            const salinityChart = createDoughnutChart(document.getElementById('salinityChart').getContext('2d'), 'Salinity', 'us/cm', 20000);
+            const pHChart = createDoughnutChart(document.getElementById('pHChart').getContext('2d'), 'pH Level', '', 12);
+            const moistureChart = createDoughnutChart(document.getElementById('moistureChart').getContext('2d'), 'Moisture', '%', 100);
+            const flowChart = createDoughnutChart(document.getElementById('flowChart').getContext('2d'), 'Water Flow', 'L/min', 5);
+            // Update Irrigation Recommendation Based on Environmental Conditions
+            const updateIrrigationRecommendation = (temperature, humidity, salinity, pH) => {
+                let recommendation = "No recommendation";
+
+                if (temperature >= 26 && temperature <= 28 &&
+                    humidity >= 70 && humidity <= 80 &&
+                    salinity <= 1.7 &&
+                    pH >= 5.5 && pH <= 6.5) {
+                    recommendation = "Surface Irrigation (Furrow or Basin Method)";
+                } else if (
+                    (temperature >= 29 && temperature <= 32) ||
+                    (humidity >= 60 && humidity <= 70) ||
+                    (salinity >= 1.8 && salinity <= 2.5) ||
+                    (pH >= 6.0 && pH <= 7.0)
+                ) {
+                    recommendation = "Drip Irrigation";
+                } else if (
+                    (temperature >= 33 && temperature <= 35) ||
+                    (humidity >= 75 && humidity <= 85) ||
+                    (salinity <= 1.5) ||
+                    (pH >= 5.0 && pH <= 5.5)
+                ) {
+                    recommendation = "Sprinkler Irrigation";
+                }
+                recommendationText = "Irrigation Recommendation: " + recommendation + "<br>Based on the result:<br>" +
+                     "Temperature: "  + temperature + "°C<br>" +
+                     "Humidity: " + humidity + "%<br>" +
+                     "Salinity: " + salinity + " us/cm<br>" +
+                     "pH: " + pH + "<br>The recommended irrigation above was chosen.";
+
+                document.getElementById('irrigationRecommendation').innerHTML = recommendationText; // Use innerHTML instead of textContent
+
+                fetch(`http://${window.location.host}/saveRecommendation?data=${encodeURIComponent(recommendationText)}`);
+            };
+
+            // WebSocket logic
+            const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+            ws.onmessage = (event) => {
+            const message = event.data.trim();
+            console.log("Received message:", message);
+
+            try {
+                // Split the message into sensor data and pump state
+                const [dataPart, pumpState] = message.split("],");
+                const sensorData = JSON.parse(dataPart + "]"); // Parse the array part
+
+                // Extract sensor values
+                const humidity = sensorData[0];
+                const moisture = sensorData[0];
+                const temperature = sensorData[1];
+                const pHLevel = sensorData[2];
+                const salinity = sensorData[3];
+                const flowRate = sensorData[4];
+
+                const updateChart = (chart, value) => {
+                    const limit = chart.data.limit || 100; // Use the stored limit or default to 100
+                    chart.data.datasets[0].data = [value, Math.max(limit - value, 0)]; // Ensure no negative Remaining
+                    chart.update();
+                };
+                
+                updateChart(humidityChart, humidity); // Update Moisture Chart
+                updateChart(moistureChart, moisture); // Update Moisture Chart
+                updateChart(temperatureChart, temperature); // Update Temperature Chart
+                updateChart(pHChart, pHLevel); // Update pH Level Chart
+                updateChart(salinityChart, salinity); // Update Salinity Chart
+                updateChart(flowChart, flowRate); // Update Salinity Chart
+                // Update Irrigation Recommendation
+                if(updateIrrigation){
+                    updateIrrigationRecommendation(temperature, humidity, salinity, pHLevel);
+                    updateIrrigation = false;
+                }
+
+                // Update the toggle switch
+                if(update == 0){
+                    toggleSwitch.checked = pumpState.trim() === "ON";
+                }
+            } catch (error) {
+                console.error("Error parsing message:", error);
+            }
+        };
+
+        ws.onopen = () => console.log("WebSocket connected");
+        ws.onclose = () => console.log("WebSocket disconnected");
+
+        const toggleSwitch = document.getElementById("toggleSwitch");
+
+        toggleSwitch.addEventListener("change", () => {
+        const state = toggleSwitch.checked ? "ON" : "OFF";
+        update = 1;
+        // Disable the button
+        toggleSwitch.disabled = true;
+
+        // Send state to ESP32 via WebSocket
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(state);
+            console.log(`Switch toggled: ${state}`);
+        } else {
+            console.error("WebSocket is not open.");
+        }
+
+        // Re-enable the button after 5 seconds
+        setTimeout(() => {
+            toggleSwitch.disabled = false;
+            update = 0;
+        }, 5000);
+    });
+
+    handleStabilization();
+
+
+
+        </script>
+        
+    </body>
+    </html>

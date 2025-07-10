@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historical Data</title>
+    <link rel="icon" href="/webT.png" type="image/png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden; /* Prevent horizontal scroll */
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            padding: 20px;
+        }
+        .header {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            background-color: #fff;
+            padding: 10px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header img {
+            height: 50px;
+        }
+        .header nav a {
+            margin: 0 15px;
+            text-decoration: none;
+            color: #333;
+        }
+        .card {
+            background-color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 27%; /* Set half the width for 2 columns */
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            width: 100%;
+            height: 170px; /* Adjust chart height */
+            margin: auto;
+        }
+        .chart-container canvas {
+            width: 100%;
+            height: 100%; /* Ensure the canvas fills its container */
+        }
+        #modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            z-index: 1000;
+        }
+        #modal h2 {
+            margin: 0 0 10px;
+        }
+        #modal ul {
+            list-style: none;
+            padding: 0;
+        }
+        #modal ul li {
+            margin-bottom: 5px;
+        }
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="header">
+        <a href="index.php">
+            <img src="/ecoflow.png" alt="EcoFLOW Logo">
+        </a>
+        <nav>
+            <a href="/">HOME</a>
+            <a href="/soil_history">SOIL HISTORY</a>
+            <a href="/water_history">WATER HISTORY</a>
+        </nav>
+    </div>
+    <div class="container">
+        <div class="card">
+            <h2>Average Humidity</h2>
+            <div class="chart-container">
+                <canvas id="humidityChart"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Average Temperature</h2>
+            <div class="chart-container">
+                <canvas id="temperatureChart"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Average pH</h2>
+            <div class="chart-container">
+                <canvas id="pHChart"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Average Conductivity</h2>
+            <div class="chart-container">
+                <canvas id="salinityChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div id="modal">
+        <h2>Details for <span id="modalDate"></span></h2>
+        <ul id="modalContent"></ul>
+        <button onclick="closeModal()">Close</button>
+    </div>
+    <div id="overlay"></div>
+    
+    <script>
+        // Function to calculate the average of an array
+        function average(array) {
+            if (array.length === 0) return 0; // Prevent division by zero
+            const sum = array.reduce((total, value) => total + value, 0);
+            return sum / array.length;
+        }
+
+        // Function to fetch and process readings data
+        function fetchAndVisualizeReadings() {
+            const url = `${window.location.origin}/readings.txt`; // Use the current origin dynamically
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.text(); // Read the file content as plain text
+                })
+                .then(fileContent => {
+                    console.log("Readings File Content:");
+                    console.log(fileContent); // Log the content of readings.txt
+
+                    const data = processReadingsData(fileContent); // Process the data
+                    visualizeGraphs(data.slice(-5)); // Limit to the last 5 days
+                })
+                .catch(error => console.error('Error fetching readings.txt:', error));
+        }
+
+        // Function to process readings data
+        function processReadingsData(fileContent) {
+            const lines = fileContent.trim().split("\n"); // Split the file content into lines
+            const dailyData = {}; // Object to store readings grouped by date
+
+            lines.forEach(line => {
+                const parts = line.split(","); // Split each line into parts
+                const dateTime = parts[0]; // Full timestamp
+                const date = dateTime.split(" ")[0]; // Extract the date (YYYY-MM-DD)
+                const humidity = parseFloat(parts[1]); // Extract humidity
+                const temperature = parseFloat(parts[2]); // Extract temperature
+                const pH = parseFloat(parts[3]); // Extract pH
+                const salinity = parseFloat(parts[4]); // Extract salinity
+
+                // Initialize the date entry if it doesn't exist
+                if (!dailyData[date]) {
+                    dailyData[date] = { readings: [], humidity: [], temperature: [], pH: [], salinity: [] };
+                }
+
+                // Add the readings to the respective arrays
+                dailyData[date].readings.push(line);
+                dailyData[date].humidity.push(humidity);
+                dailyData[date].temperature.push(temperature);
+                dailyData[date].pH.push(pH);
+                dailyData[date].salinity.push(salinity);
+            });
+
+            // Calculate daily averages
+            const averagedData = Object.keys(dailyData).map(date => {
+                const readings = dailyData[date];
+                return {
+                    date,
+                    avgHumidity: average(readings.humidity),
+                    avgTemperature: average(readings.temperature),
+                    avgPH: average(readings.pH),
+                    avgSalinity: average(readings.salinity),
+                    allReadings: readings.readings // Include all readings for the modal
+                };
+            });
+
+            return averagedData;
+        }
+
+        // Function to show the modal with only the selected data type
+// Function to show the modal with only the selected data type, sorted from highest to lowest
+function showModal(date, readings, type) {
+    const modal = document.getElementById('modal');
+    const overlay = document.getElementById('overlay');
+    const modalDate = document.getElementById('modalDate');
+    const modalContent = document.getElementById('modalContent');
+
+    modalDate.textContent = date;
+
+    // Extract relevant data based on type and sort from highest to lowest
+    const sortedReadings = readings.map(reading => {
+        const parts = reading.split(',');
+        const time = parts[0].split(' ')[1]; // Extract time from datetime
+        let valueLabel = '';
+        let value = 0;
+
+        switch (type) {
+            case 'humidity':
+                valueLabel = 'Humidity';
+                value = parseFloat(parts[1]);
+                break;
+            case 'temperature':
+                valueLabel = 'Temperature';
+                value = parseFloat(parts[2]);
+                break;
+            case 'pH':
+                valueLabel = 'pH';
+                value = parseFloat(parts[3]);
+                break;
+            case 'salinity':
+                valueLabel = 'Conductivity';
+                value = parseFloat(parts[4]);
+                break;
+        }
+
+        return { time, valueLabel, value };
+    }).sort((a, b) => b.value - a.value); // Sort in descending order
+
+    // Generate the modal content
+    modalContent.innerHTML = sortedReadings.map(item => `
+        <li>
+            <strong>${date} ${item.time}</strong><br>
+            ${item.valueLabel}: ${item.value.toFixed(2)}
+        </li>
+    `).join('');
+
+    modal.style.display = 'block';
+    overlay.style.display = 'block';
+}
+
+
+// Function to create a line chart with clickable points
+function createLineChart(canvasId, label, labels, data, color, fullData, type) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: label,
+                    data: data,
+                    borderColor: color,
+                    backgroundColor: `${color}22`, // Transparent version of the color
+                    fill: false,
+                    tension: 0.4,
+                },
+            ],
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                },
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return `${context.dataset.label}: ${context.raw.toFixed(2)}`;
+                        },
+                    },
+                },
+            },
+            onClick: (event, elements) => {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const selectedDate = labels[index];
+                    const selectedData = fullData.find(item => item.date === selectedDate);
+                    showModal(selectedDate, selectedData.allReadings, type);
+                }
+            },
+        },
+    });
+}
+
+// Function to visualize the data in separate graphs
+function visualizeGraphs(data) {
+    const dates = data.map(item => item.date); // Extract dates
+    const avgHumidity = data.map(item => item.avgHumidity); // Extract average humidity
+    const avgTemperature = data.map(item => item.avgTemperature); // Extract average temperature
+    const avgPH = data.map(item => item.avgPH); // Extract average pH
+    const avgSalinity = data.map(item => item.avgSalinity); // Extract average salinity
+
+    // Initialize individual graphs with respective data type
+    createLineChart('humidityChart', 'Average Humidity %RH', dates, avgHumidity, 'blue', data, 'humidity');
+    createLineChart('temperatureChart', 'Average Temperature °C', dates, avgTemperature, 'red', data, 'temperature');
+    createLineChart('pHChart', 'Average pH', dates, avgPH, 'green', data, 'pH');
+    createLineChart('salinityChart', 'Average Conductivity us/cm', dates, avgSalinity, 'purple', data, 'salinity');
+}
+
+        // Function to close the modal
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        // Call the function to fetch and visualize the readings
+        fetchAndVisualizeReadings();
+    </script>
+</body>
+</html>

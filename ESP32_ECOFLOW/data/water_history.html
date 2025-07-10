@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Consumption Chart</title>
+    <link rel="icon" href="/webT.png" type="image/png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .header {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            background-color: #fff;
+            padding: 10px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header img {
+            height: 50px;
+        }
+        .header nav a {
+            margin: 0 15px;
+            text-decoration: none;
+            color: #333;
+        }
+        .main {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-top: 20px;
+            padding: 0 30px;
+        }
+        .card {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 65%;
+            margin-right: 20px;
+            margin-bottom: 20px;
+        }
+        .sidebar {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 30%;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .chart-container {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .chart-container canvas {
+            width: 100%;
+        }
+        .button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            align-self: flex-end;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .weekly-consumption {
+            background-color: #4caf50;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            width: 100%;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        .weekly-consumption h3 {
+            margin: 0 0 5px;
+            font-size: 1em;
+        }
+        .weekly-consumption p {
+            margin: 0;
+            font-size: 1.2em;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="header">
+        <a href="index.php">
+            <img src="/ecoflow.png" alt="EcoFLOW Logo">
+        </a>
+        <nav>
+            <a href="/">HOME</a>
+            <a href="/soil_history">SOIL HISTORY</a>
+            <a href="/water_history">WATER HISTORY</a>
+        </nav>
+    </div>
+    <div class="container">
+        <div class="main">
+            <div class="card">
+                <h2>Water Consumption</h2>
+                <div class="chart-container">
+                    <canvas id="waterConsumptionChart"></canvas>
+                </div>
+            </div>
+            <div class="sidebar">
+
+                <div class="weekly-consumption">
+                    <h3>Weekly Total Water Consumption:</h3>
+                    <p id="weeklyTotal">0 Liters</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize variables
+        var waterCtx = document.getElementById('waterConsumptionChart').getContext('2d');
+
+        var waterConsumptionChart = new Chart(waterCtx, {
+            type: 'line',
+            data: {
+                labels: [], // Dates will be added dynamically
+                datasets: [{
+                    label: 'Liters',
+                    data: [], // Water consumption in liters
+                    backgroundColor: 'rgba(0, 0, 139, 0.2)',
+                    borderColor: 'rgba(0, 0, 139, 1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointBackgroundColor: 'rgba(0, 0, 139, 1)',
+                    pointBorderColor: 'rgba(0, 0, 139, 1)',
+                    pointHoverRadius: 8,
+                    pointHoverBackgroundColor: 'rgba(0, 0, 139, 1)',
+                    pointHoverBorderColor: 'rgba(0, 0, 139, 1)'
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Water Consumption: ${context.raw.toFixed(2)} L`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Fetch water data from /water.txt and update the chart
+        function fetchWaterData() {
+            const url = `${window.location.origin}/water.txt`;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(data => {
+                    processWaterData(data);
+                })
+                .catch(error => console.error('Error fetching water data:', error));
+        }
+
+        // Process water data to calculate daily consumption
+        function processWaterData(fileContent) {
+            const lines = fileContent.trim().split('\n');
+            const dailyConsumption = {}; // Object to store daily consumption
+
+            lines.forEach(line => {
+                const [dateTime, seconds, flowRate] = line.split(',');
+                const date = dateTime.split(' ')[0]; // Extract the date (YYYY-MM-DD)
+                const duration = parseFloat(seconds); // Duration in seconds
+                const rate = parseFloat(flowRate); // Flow rate in L/min
+
+                const liters = (rate * duration) / 60; // Calculate liters
+
+                // Accumulate daily consumption
+                if (!dailyConsumption[date]) {
+                    dailyConsumption[date] = 0;
+                }
+                dailyConsumption[date] += liters;
+            });
+
+            // Update the chart
+            updateChart(dailyConsumption);
+        }
+
+        // Update the chart with daily consumption data
+        function updateChart(dailyConsumption) {
+            const dates = Object.keys(dailyConsumption);
+            const values = Object.values(dailyConsumption);
+
+            // Limit to the last 7 days
+            const limitedDates = dates.slice(-7);
+            const limitedValues = values.slice(-7);
+
+            waterConsumptionChart.data.labels = limitedDates;
+            waterConsumptionChart.data.datasets[0].data = limitedValues;
+            waterConsumptionChart.update();
+
+            // Update weekly total
+            const total = limitedValues.reduce((sum, val) => sum + val, 0);
+            document.getElementById('weeklyTotal').textContent = `${total.toFixed(2)} Liters`;
+        }
+
+
+        // Fetch and display water data
+        fetchWaterData();
+    </script>
+</body>
+</html>
