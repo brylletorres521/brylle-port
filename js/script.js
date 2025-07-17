@@ -90,6 +90,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Initialize EmailJS
+    emailjs.init("YOUR_PUBLIC_KEY"); // Replace with your actual EmailJS public key
+    
     // Form Submission
     const contactForm = document.getElementById('contactForm');
     if (contactForm) {
@@ -104,17 +107,53 @@ document.addEventListener('DOMContentLoaded', function() {
                 formValues[key] = value;
             }
             
-            // Here you would typically send the data to a server
-            // For now, we'll just log it and show a success message
-            console.log('Form submitted with values:', formValues);
+            // Show loading state
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            submitButton.disabled = true;
             
-            // Show success message
-            const successMessage = document.createElement('div');
-            successMessage.className = 'success-message';
-            successMessage.innerHTML = '<p>Thank you for your message! I will get back to you soon.</p>';
-            
-            contactForm.innerHTML = '';
-            contactForm.appendChild(successMessage);
+            // Send email using EmailJS
+            emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', {
+                from_name: formValues.name,
+                from_email: formValues.email,
+                subject: formValues.subject,
+                message: formValues.message,
+                to_email: 'tbrylle7@gmail.com' // Your email address
+            })
+            .then(function(response) {
+                console.log('SUCCESS!', response.status, response.text);
+                
+                // Show success message
+                const successMessage = document.createElement('div');
+                successMessage.className = 'success-message';
+                successMessage.innerHTML = '<p><i class="fas fa-check-circle"></i> Thank you for your message! I will get back to you soon.</p>';
+                
+                contactForm.innerHTML = '';
+                contactForm.appendChild(successMessage);
+            })
+            .catch(function(error) {
+                console.log('FAILED...', error);
+                
+                // Show error message
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'error-message';
+                errorMessage.innerHTML = '<p><i class="fas fa-exclamation-circle"></i> Sorry, there was an error sending your message. Please try again or contact me directly at tbrylle7@gmail.com</p>';
+                
+                // Reset button
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+                
+                // Insert error message before the form
+                contactForm.parentNode.insertBefore(errorMessage, contactForm);
+                
+                // Remove error message after 5 seconds
+                setTimeout(() => {
+                    if (errorMessage.parentNode) {
+                        errorMessage.parentNode.removeChild(errorMessage);
+                    }
+                }, 5000);
+            });
         });
     }
     
